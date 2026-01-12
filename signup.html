@@ -87,52 +87,79 @@ input {
   </div>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+
 <script>
-function signup(){
-  const name = document.getElementById("name").value.trim();
-  const email = document.getElementById("email").value.trim();
-  const pass = document.getElementById("password").value.trim();
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbcCE3MINVNUvMpw1YEFjrm9xJhCFgFHc",
+    authDomain: "zaq-pay-a4256.firebaseapp.com",
+    projectId: "zaq-pay-a4256",
+    storageBucket: "zaq-pay-a4256.firebasestorage.app",
+    messagingSenderId: "349261684381",
+    appId: "1:349261684381:web:20816605dfbaacb4fbbe74"
+  };
 
-  // 1️⃣ Хоосон шалгалт
-  if(!name || !email || !pass){
-    alert("Бүх талбарыг бөглөнө үү!");
-    return;
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  function signup(){
+    const name = document.getElementById("name").value.trim();
+    const email = document.getElementById("email").value.trim();
+    const pass = document.getElementById("password").value.trim();
+
+    // 1️⃣ Хоосон шалгалт
+    if(!name || !email || !pass){
+      alert("Бүх талбарыг бөглөнө үү!");
+      return;
+    }
+
+    // 2️⃣ Email формат шалгах
+    const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    if(!emailPattern.test(email)){
+      alert("Зөв email хаяг оруулна уу!");
+      return;
+    }
+
+    // 3️⃣ LocalStorage хадгалах (энэ хэсэг өөрчлөлгүй үлдэнэ)
+    let users = JSON.parse(localStorage.getItem("users")) || [];
+
+    if(users.some(u => u.email.toLowerCase() === email.toLowerCase())){
+      alert("Энэ email аль хэдийн бүртгэлтэй байна!");
+      return;
+    }
+
+    if(users.some(u => u.name.toLowerCase() === name.toLowerCase())){
+      alert("Энэ нэртэй хэрэглэгч аль хэдийн байна! Өөр нэр сонгоно уу.");
+      return;
+    }
+
+    users.push({
+      name: name,
+      email: email,
+      pass: pass,
+      wallet: 0
+    });
+
+    localStorage.setItem("users", JSON.stringify(users));
+
+    // 4️⃣ Firebase руу бичих
+    const userId = Date.now(); // unique id
+    db.ref('users/' + userId).set({
+      name: name,
+      email: email,
+      pass: pass,
+      wallet: 0
+    }).then(() => {
+      alert("Амжилттай бүртгэгдлээ!");
+      window.location.href = "login1.html";
+    }).catch(err => {
+      console.error(err);
+      alert("Алдаа гарлаа!");
+    });
   }
-
-  // 2️⃣ Email формат шалгах
-  const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-  if(!emailPattern.test(email)){
-    alert("Зөв email хаяг оруулна уу!");
-    return;
-  }
-
-  let users = JSON.parse(localStorage.getItem("users")) || [];
-
-  // 3️⃣ Email давхцах эсэх
-  if(users.some(u => u.email.toLowerCase() === email.toLowerCase())){
-    alert("Энэ email аль хэдийн бүртгэлтэй байна!");
-    return;
-  }
-
-  // 4️⃣ Нэр давхцах эсэх
-  if(users.some(u => u.name.toLowerCase() === name.toLowerCase())){
-    alert("Энэ нэртэй хэрэглэгч аль хэдийн байна! Өөр нэр сонгоно уу.");
-    return;
-  }
-
-  // 5️⃣ Шинэ хэрэглэгч (0₮-тэй)
-  users.push({
-    name: name,
-    email: email,
-    pass: pass,
-    wallet: 0
-  });
-
-  localStorage.setItem("users", JSON.stringify(users));
-
-  alert("Амжилттай бүртгэгдлээ!");
-  window.location.href = "login1.html";
-}
 </script>
 
 </body>
