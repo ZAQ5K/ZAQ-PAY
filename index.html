@@ -72,6 +72,7 @@ input {
 <div class="login-box">
   <div class="logo">ZAQ PAY</div>
 
+  <!-- LocalStorage login -->
   <input type="email" id="email" placeholder="Email Address" required>
   <input type="password" id="password" placeholder="Password" required>
   <button class="login-btn" onclick="login()">Log In</button>
@@ -79,8 +80,42 @@ input {
   <div class="link">
     <a href="signup.html">Sign Up</a>
   </div>
+
+  <!-- Firebase Users List (Optional, Admin view) -->
+  <ul id="userList" style="margin-top:20px; text-align:left; font-size:14px;"></ul>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+
+<!-- Firebase Config + JS -->
+<script>
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbcCE3MINVNUvMpw1YEFjrm9xJhCFgFHc",
+    authDomain: "zaq-pay-a4256.firebaseapp.com",
+    projectId: "zaq-pay-a4256",
+    storageBucket: "zaq-pay-a4256.firebasestorage.app",
+    messagingSenderId: "349261684381",
+    appId: "1:349261684381:web:20816605dfbaacb4fbbe74"
+  };
+
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
+
+  // Show all Firebase users (public)
+  const userList = document.getElementById('userList');
+  db.ref('users').on('value', snapshot => {
+    userList.innerHTML = '';
+    snapshot.forEach(child => {
+      const li = document.createElement('li');
+      li.textContent = Name: ${child.val().name}, Phone: ${child.val().phone};
+      userList.appendChild(li);
+    });
+  });
+</script>
+
+<!-- LocalStorage Login -->
 <script>
 function login(){
   const email = document.getElementById("email").value.trim();
