@@ -34,65 +34,118 @@ h1 { font-size: 28px; color: #2563eb; margin-bottom: 20px; }
   </div>
 
   <button class="logout-btn" onclick="logout()">Гарах</button>
+
+  <!-- Firebase users list (Admin view, optional) -->
+  <ul id="userList" style="margin-top:20px; text-align:left; font-size:14px;"></ul>
 </div>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+
 <script>
-let currentUser = JSON.parse(localStorage.getItem("currentUser"));
-if(!currentUser){
-  alert("Та эхлээд нэвтэрнэ үү!");
-  window.location.href = "login1.html";
-}
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbcCE3MINVNUvMpw1YEFjrm9xJhCFgFHc",
+    authDomain: "zaq-pay-a4256.firebaseapp.com",
+    projectId: "zaq-pay-a4256",
+    storageBucket: "zaq-pay-a4256.firebasestorage.app",
+    messagingSenderId: "349261684381",
+    appId: "1:349261684381:web:20816605dfbaacb4fbbe74"
+  };
 
-// Wallet undefined эсвэл хоосон бол 0
-if(!currentUser.wallet || isNaN(currentUser.wallet)) currentUser.wallet = 0;
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-// User info харуулах
-function formatMoney(amount){ return amount.toLocaleString('mn-MN') + " ₮"; }
-document.getElementById("username").innerText = currentUser.name;
-document.getElementById("wallet").innerText = formatMoney(currentUser.wallet);
+  // Get current user from LocalStorage
+  let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if(!currentUser){
+    alert("Та эхлээд нэвтэрнэ үү!");
+    window.location.href = "login1.html";
+  }
 
-// Мөнгө шилжүүлэх
-function transfer(){
-  let amount = Number(document.getElementById("transferAmount").value);
-  let recipientName = document.getElementById("recipientName").value.trim();
+  // Wallet undefined бол 0
+  if(!currentUser.wallet || isNaN(currentUser.wallet)) currentUser.wallet = 0;
 
-  if(!recipientName){ alert("Хүлээн авагчийн нэрийг оруулна уу!"); return; }
-  if(amount <= 0){ alert("Зөв дүн оруулна уу!"); return; }
-  if(amount > currentUser.wallet){ alert("Таны хэтэвч хангалтгүй байна!"); return; }
+  function formatMoney(amount){ return amount.toLocaleString('mn-MN') + " ₮"; }
+  document.getElementById("username").innerText = currentUser.name;
+  document.getElementById("wallet").innerText = formatMoney(currentUser.wallet);
 
-  let users = JSON.parse(localStorage.getItem("users")) || [];
-  let recipient = users.find(u => u.name.toLowerCase() === recipientName.toLowerCase());
+  // Realtime Firebase listener (users)
+  const userList = document.getElementById('userList');
+  db.ref('users').on('value', snapshot => {
+    userList.innerHTML = '';
+    snapshot.forEach(child => {
+      const u = child.val();
+      const li = document.createElement('li');
+      li.textContent = Name: ${u.name}, Wallet: ${formatMoney(u.wallet || 0)};
+      userList.appendChild(li);
 
-  if(!recipient){ alert("Ийм нэртэй хэрэглэгч олдсонгүй!"); return; }
-  if(recipient.email === currentUser.email){ alert("Өөртөө шилжүүлэх боломжгүй!"); return; }
-
-  // Current user-с хасах
-  currentUser.wallet -= amount;
-  // Хүлээн авагчид нэмэх
-  recipient.wallet = (recipient.wallet || 0) + amount;
-
-  // LocalStorage-д хадгалах
-  users = users.map(u=>{
-    if(u.email === currentUser.email) u.wallet = currentUser.wallet;
-    if(u.email === recipient.email) u.wallet = recipient.wallet;
-    return u;
+      // Update currentUser wallet if matching email
+      if(u.email === currentUser.email){
+        currentUser.wallet = u.wallet || 0;
+        document.getElementById("wallet").innerText = formatMoney(currentUser.wallet);
+        localStorage.setItem("currentUser", JSON.stringify(currentUser));
+      }
+    });
   });
 
-  localStorage.setItem("users", JSON.stringify(users));
-  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+  // Money transfer
+  function transfer(){
+    let amount = Number(document.getElementById("transferAmount").value);
+    let recipientName = document.getElementById("recipientName").value.trim();
 
-  // UI update
-  document.getElementById("wallet").innerText = formatMoney(currentUser.wallet);
-  document.getElementById("transferAmount").value = "";
-  document.getElementById("recipientName").value = "";
-  alert(formatMoney(amount) + " амжилттай шилжлээ " + recipient.name + " рүү!");
-}
+    if(!recipientName){ alert("Хүлээн авагчийн нэрийг оруулна уу!"); return; }
+    if(amount <= 0){ alert("Зөв дүн оруулна уу!"); return; }
+    if(amount > currentUser.wallet){ alert("Таны хэтэвч хангалтгүй байна!"); return; }
 
-// Logout
-function logout(){
-  localStorage.removeItem("currentUser");
-  window.location.href = "login1.html";
-}
+    const usersRef = db.ref('users');
+    usersRef.once('value').then(snapshot => {
+      let recipientEntry;
+      snapshot.forEach(child => {
+        const u = child.val();
+        if(u.name.toLowerCase() === recipientName.toLowerCase()){
+          recipientEntry = { key: child.key, data: u };
+        }
+      });
+
+      if(!recipientEntry){
+        alert("Ийм нэртэй хэрэглэгч олдсонгүй!");
+        return;
+      }
+      if(recipientEntry.data.email === currentUser.email){
+        alert("Өөртөө шилжүүлэх боломжгүй!");
+        return;
+      }
+
+      // Update wallets in Firebase
+      const updates = {};
+      updates['users/' + recipientEntry.key + '/wallet'] = (recipientEntry.data.wallet || 0) + amount;
+
+      // Find currentUser key
+      snapshot.forEach(child => {
+        const u = child.val();
+        if(u.email === currentUser.email){
+          updates['users/' + child.key + '/wallet'] = currentUser.wallet - amount;
+        }
+      });
+
+      db.ref().update(updates).then(()=>{
+        alert(formatMoney(amount) + " амжилттай шилжлээ " + recipientName + " рүү!");
+        document.getElementById("transferAmount").value = "";
+        document.getElementById("recipientName").value = "";
+      }).catch(err=>{
+        console.error(err);
+        alert("Алдаа гарлаа!");
+      });
+    });
+  }
+
+  // Logout
+  function logout(){
+    localStorage.removeItem("currentUser");
+    window.location.href = "login1.html";
+  }
 </script>
 
 </body>
