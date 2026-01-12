@@ -76,64 +76,94 @@ button {
 <tbody id="userTable"></tbody>
 </table>
 
+<!-- Firebase SDK -->
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-app.js"></script>
+<script src="https://www.gstatic.com/firebasejs/9.23.0/firebase-database.js"></script>
+
 <script>
-let users = JSON.parse(localStorage.getItem("users")) || [];
-const tbody = document.getElementById("userTable");
+  // Firebase config
+  const firebaseConfig = {
+    apiKey: "AIzaSyAbcCE3MINVNUvMpw1YEFjrm9xJhCFgFHc",
+    authDomain: "zaq-pay-a4256.firebaseapp.com",
+    projectId: "zaq-pay-a4256",
+    storageBucket: "zaq-pay-a4256.firebasestorage.app",
+    messagingSenderId: "349261684381",
+    appId: "1:349261684381:web:20816605dfbaacb4fbbe74"
+  };
 
-function render(){
-  tbody.innerHTML = "";
+  const app = firebase.initializeApp(firebaseConfig);
+  const db = firebase.database();
 
-  users.forEach((u, i) => {
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td>${i+1}</td>
-      <td><input value="${u.name}"></td>
-      <td>${u.email}</td>
-      <td><input value="${u.pass}"></td>
-      <td><input type="number" value="${u.wallet || 0}"></td>
-      <td>
-        <button class="save-btn" onclick="saveUser(${i}, this)">Хадгалах</button>
-        <button class="delete-btn" onclick="deleteUser(${i})">Устгах</button>
-      </td>
-    `;
-    tbody.appendChild(tr);
+  const tbody = document.getElementById("userTable");
+  let users = [];
+
+  function render(){
+    tbody.innerHTML = "";
+    users.forEach((u, i) => {
+      const tr = document.createElement("tr");
+      tr.innerHTML = `
+        <td>${i+1}</td>
+        <td><input value="${u.name}"></td>
+        <td>${u.email}</td>
+        <td><input value="${u.pass}"></td>
+        <td><input type="number" value="${u.wallet || 0}"></td>
+        <td>
+          <button class="save-btn" onclick="saveUser('${u.key}', this)">Хадгалах</button>
+          <button class="delete-btn" onclick="deleteUser('${u.key}')">Устгах</button>
+        </td>
+      `;
+      tbody.appendChild(tr);
+    });
+  }
+
+  // Firebase realtime listener
+  db.ref('users').on('value', snapshot => {
+    users = [];
+    snapshot.forEach(child => {
+      const u = child.val();
+      u.key = child.key;
+      users.push(u);
+    });
+    render();
   });
-}
 
-function saveUser(index, btn){
-  const row = btn.closest("tr");
-  const inputs = row.querySelectorAll("input");
+  function saveUser(key, btn){
+    const row = btn.closest("tr");
+    const inputs = row.querySelectorAll("input");
 
-  users[index].name = inputs[0].value.trim();
-  users[index].pass = inputs[1].value;
-  users[index].wallet = Number(inputs[2].value) || 0;
+    const updatedData = {
+      name: inputs[0].value.trim(),
+      pass: inputs[1].value,
+      wallet: Number(inputs[2].value) || 0
+    };
 
-  localStorage.setItem("users", JSON.stringify(users));
-
-  // currentUser мөн бол update
-  let currentUser = JSON.parse(localStorage.getItem("currentUser"));
-  if(currentUser && currentUser.email === users[index].email){
-    localStorage.setItem("currentUser", JSON.stringify(users[index]));
+    db.ref('users/' + key).update(updatedData)
+      .then(()=>{
+        alert("Амжилттай хадгалагдлаа!");
+      }).catch(err=>{
+        console.error(err);
+        alert("Алдаа гарлаа!");
+      });
   }
 
-  alert("Амжилттай хадгалагдлаа!");
-}
+  function deleteUser(key){
+    if(!confirm("Энэ хэрэглэгчийг устгах уу?")) return;
 
-function deleteUser(index){
-  if(!confirm("Энэ хэрэглэгчийг устгах уу?")) return;
+    // Хэрэв нэвтэрсэн хэрэглэгчийг устгах гэж байвал block
+    const currentUser = JSON.parse(localStorage.getItem("currentUser"));
+    const userToDelete = users.find(u => u.key === key);
+    if(currentUser && userToDelete && currentUser.email === userToDelete.email){
+      alert("Нэвтэрсэн хэрэглэгчийг устгах боломжгүй!");
+      return;
+    }
 
-  let currentUser = JSON.parse(localStorage.getItem("currentUser"));
-  if(currentUser && currentUser.email === users[index].email){
-    alert("Нэвтэрсэн хэрэглэгчийг устгах боломжгүй!");
-    return;
+    db.ref('users/' + key).remove()
+      .then(()=>{ alert("Хэрэглэгч устгагдлаа!"); })
+      .catch(err=>{
+        console.error(err);
+        alert("Алдаа гарлаа!");
+      });
   }
-
-  users.splice(index,1);
-  localStorage.setItem("users", JSON.stringify(users));
-  render();
-}
-
-render();
 </script>
 
 </body>
