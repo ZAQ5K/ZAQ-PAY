@@ -1,0 +1,140 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Users • Admin</title>
+
+<style>
+body {
+  font-family: Arial, Helvetica, sans-serif;
+  background:#eef2f7;
+  display:flex;
+  justify-content:center;
+  padding:40px;
+}
+
+table {
+  border-collapse: collapse;
+  width: 800px;
+  background:#fff;
+  border-radius:10px;
+  overflow:hidden;
+  box-shadow:0 8px 24px rgba(0,0,0,0.1);
+}
+
+th, td {
+  padding:12px;
+  border-bottom:1px solid #d1d5db;
+  text-align:left;
+}
+
+th {
+  background:#2563eb;
+  color:#fff;
+}
+
+tr:hover { background:#f3f4f6; }
+
+input {
+  width:100%;
+  padding:6px;
+  border-radius:6px;
+  border:1px solid #d1d5db;
+}
+
+button {
+  padding:6px 10px;
+  border:none;
+  border-radius:6px;
+  cursor:pointer;
+  font-weight:bold;
+}
+
+.save-btn { background:#16a34a; color:white; }
+.save-btn:hover { background:#15803d; }
+
+.delete-btn { background:#ef4444; color:white; }
+.delete-btn:hover { background:#b91c1c; }
+</style>
+</head>
+
+<body>
+
+<table>
+<thead>
+<tr>
+  <th>#</th>
+  <th>Нэр</th>
+  <th>Email</th>
+  <th>Password</th>
+  <th>Мөнгө (₮)</th>
+  <th>Үйлдэл</th>
+</tr>
+</thead>
+
+<tbody id="userTable"></tbody>
+</table>
+
+<script>
+let users = JSON.parse(localStorage.getItem("users")) || [];
+const tbody = document.getElementById("userTable");
+
+function render(){
+  tbody.innerHTML = "";
+
+  users.forEach((u, i) => {
+    const tr = document.createElement("tr");
+    tr.innerHTML = `
+      <td>${i+1}</td>
+      <td><input value="${u.name}"></td>
+      <td>${u.email}</td>
+      <td><input value="${u.pass}"></td>
+      <td><input type="number" value="${u.wallet || 0}"></td>
+      <td>
+        <button class="save-btn" onclick="saveUser(${i}, this)">Хадгалах</button>
+        <button class="delete-btn" onclick="deleteUser(${i})">Устгах</button>
+      </td>
+    `;
+    tbody.appendChild(tr);
+  });
+}
+
+function saveUser(index, btn){
+  const row = btn.closest("tr");
+  const inputs = row.querySelectorAll("input");
+
+  users[index].name = inputs[0].value.trim();
+  users[index].pass = inputs[1].value;
+  users[index].wallet = Number(inputs[2].value) || 0;
+
+  localStorage.setItem("users", JSON.stringify(users));
+
+  // currentUser мөн бол update
+  let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if(currentUser && currentUser.email === users[index].email){
+    localStorage.setItem("currentUser", JSON.stringify(users[index]));
+  }
+
+  alert("Амжилттай хадгалагдлаа!");
+}
+
+function deleteUser(index){
+  if(!confirm("Энэ хэрэглэгчийг устгах уу?")) return;
+
+  let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+  if(currentUser && currentUser.email === users[index].email){
+    alert("Нэвтэрсэн хэрэглэгчийг устгах боломжгүй!");
+    return;
+  }
+
+  users.splice(index,1);
+  localStorage.setItem("users", JSON.stringify(users));
+  render();
+}
+
+render();
+</script>
+
+</body>
+</html>

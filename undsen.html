@@ -1,0 +1,99 @@
+<!DOCTYPE html>
+<html lang="mn">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Undsen • MySite</title>
+<style>
+body { font-family: Arial, sans-serif; background: #eef2f7; display: flex; justify-content: center; padding-top: 40px; }
+.dashboard { background: #fff; width: 550px; padding: 30px 40px; border-radius: 12px; box-shadow: 0 12px 36px rgba(0,0,0,0.15); }
+h1 { font-size: 28px; color: #2563eb; margin-bottom: 20px; }
+.wallet { margin-top: 15px; font-size: 18px; display: flex; justify-content: space-between; align-items: center; }
+.wallet span.value { font-weight: bold; }
+.transfer { margin-top: 30px; display:flex; gap:10px; flex-wrap:wrap; }
+.transfer input { flex:1; padding:10px; border-radius:8px; border:1px solid #d1d5db; font-size:15px; }
+.transfer button { padding:10px 15px; border-radius:8px; border:none; background:#16a34a; color:white; font-weight:bold; cursor:pointer; }
+.transfer button:hover { background:#15803d; }
+.logout-btn { margin-top: 20px; width:100%; padding:12px; border:none; border-radius:8px; background:#ef4444; color:white; font-weight:bold; cursor:pointer; }
+.logout-btn:hover { background:#b91c1c; }
+</style>
+</head>
+<body>
+
+<div class="dashboard">
+  <h1 id="username">Нэвтэрсэн хэрэглэгч</h1>
+  <div class="wallet">
+    <span>Таны хэтэвч:</span>
+    <span id="wallet" class="value">0 ₮</span>
+  </div>
+
+  <div class="transfer">
+    <input type="text" id="recipientName" placeholder="Хүлээн авагчийн нэр">
+    <input type="number" id="transferAmount" placeholder="Шилжүүлэх дүн">
+    <button onclick="transfer()">Мөнгө шилжүүлэх</button>
+  </div>
+
+  <button class="logout-btn" onclick="logout()">Гарах</button>
+</div>
+
+<script>
+let currentUser = JSON.parse(localStorage.getItem("currentUser"));
+if(!currentUser){
+  alert("Та эхлээд нэвтэрнэ үү!");
+  window.location.href = "login1.html";
+}
+
+// Wallet undefined эсвэл хоосон бол 0
+if(!currentUser.wallet || isNaN(currentUser.wallet)) currentUser.wallet = 0;
+
+// User info харуулах
+function formatMoney(amount){ return amount.toLocaleString('mn-MN') + " ₮"; }
+document.getElementById("username").innerText = currentUser.name;
+document.getElementById("wallet").innerText = formatMoney(currentUser.wallet);
+
+// Мөнгө шилжүүлэх
+function transfer(){
+  let amount = Number(document.getElementById("transferAmount").value);
+  let recipientName = document.getElementById("recipientName").value.trim();
+
+  if(!recipientName){ alert("Хүлээн авагчийн нэрийг оруулна уу!"); return; }
+  if(amount <= 0){ alert("Зөв дүн оруулна уу!"); return; }
+  if(amount > currentUser.wallet){ alert("Таны хэтэвч хангалтгүй байна!"); return; }
+
+  let users = JSON.parse(localStorage.getItem("users")) || [];
+  let recipient = users.find(u => u.name.toLowerCase() === recipientName.toLowerCase());
+
+  if(!recipient){ alert("Ийм нэртэй хэрэглэгч олдсонгүй!"); return; }
+  if(recipient.email === currentUser.email){ alert("Өөртөө шилжүүлэх боломжгүй!"); return; }
+
+  // Current user-с хасах
+  currentUser.wallet -= amount;
+  // Хүлээн авагчид нэмэх
+  recipient.wallet = (recipient.wallet || 0) + amount;
+
+  // LocalStorage-д хадгалах
+  users = users.map(u=>{
+    if(u.email === currentUser.email) u.wallet = currentUser.wallet;
+    if(u.email === recipient.email) u.wallet = recipient.wallet;
+    return u;
+  });
+
+  localStorage.setItem("users", JSON.stringify(users));
+  localStorage.setItem("currentUser", JSON.stringify(currentUser));
+
+  // UI update
+  document.getElementById("wallet").innerText = formatMoney(currentUser.wallet);
+  document.getElementById("transferAmount").value = "";
+  document.getElementById("recipientName").value = "";
+  alert(formatMoney(amount) + " амжилттай шилжлээ " + recipient.name + " рүү!");
+}
+
+// Logout
+function logout(){
+  localStorage.removeItem("currentUser");
+  window.location.href = "login1.html";
+}
+</script>
+
+</body>
+</html>
